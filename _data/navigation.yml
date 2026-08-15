@@ -1,0 +1,35 @@
+- title: Home
+  url: /index.html
+- title: Fiction
+  url: /fiction.html
+- title: Mission History
+  url: /missions.html
+- title: TO&E
+  url: /toe.html
+- title: Personnel
+  url: /personnel.html
+  sublinks:
+    - title: Mechwarriors
+      url: /mechwarriors.html
+    - title: Fighter Pilots
+      url: /fighter-pilots.html
+#    - title: Protomech Pilots
+#      url: /proto-pilots.html
+    - title: Vehicle Crew
+      url: /vehicle-crew.html
+    - title: Battle Armor Infantry
+      url: /battlearmor.html
+    - title: Conventional Infantry
+      url: /infantry.html
+    - title: Space Vessel Crew
+      url: /space-crew.html
+    - title: separator
+    - title: Techs
+      url: /techs.html
+    - title: Medical Staff
+      url: /medical-staff.html
+    - title: Administrators
+      url: /admin.html
+    - title: separator
+    - title: Rolls of Honor
+      url: /rolls-honor.html

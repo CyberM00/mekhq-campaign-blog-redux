@@ -1,0 +1,54 @@
+<div class="accordion" id="accordion-{{include.parent_slug}}">
+  {% assign sortedForces = site.forces | sort: 'order' %}
+  {% for subforce in sortedForces %}
+    {% if subforce.parent-slug == include.parent_slug %}
+      <div class="card">
+        <div class="card-header bg-primary" id="{{subforce.slug}}-header">
+          <h2 class="mb-0">
+            <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#{{ subforce.slug }}" aria-expanded="true" aria-controls="{{ subforce.slug }}">
+              {{ subforce.title }}
+            </button>
+          </h2>
+        </div>
+        <div id="{{ subforce.slug }}" class="collapse hide" aria-labelledby="{{subforce.slug}}-header" data-parent="#accordion-{{include.parent_slug}}">
+          <div class="card-body">
+            {{ subforce.content }}
+            {% include toe-element.html parent_slug=subforce.slug %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+  <ul class="list-group">
+    {% assign unitsAdded = '' | split: '' %}
+    {% assign sortedPeople = site.personnel | sort: 'rank-number' | reverse %}
+    {% for person in sortedPeople %}
+      {%unless unitsAdded contains person.unit-id %}
+      {% if person.force-slug == include.parent_slug %}
+        {% assign unitId = person.unit-id | split: ' ' %}
+        {% assign unitsAdded = unitsAdded | concat: unitId %}
+        <li class="list-group-item list-group-item-dark">
+          <div class="row">
+            <div class="col">
+              {% if person.portrait %}
+                <img class="img-fluid img-thumbnail float-left rounded mr-2" style="width:75px" src="/assets/images/portraits/{{ person.portrait }}">
+              {% else %}
+                <img class="img-fluid float-left rounded mr-2" style="width:75px" src="/assets/images/portraits/default.gif">
+              {% endif %}
+              {%if person.unit %}
+                {% assign custom=nil %}
+                {% include find-custom.html custom-slug=person.unit-slug %}
+                {% if custom %}
+                  <a href="{{ person.url }}">{{person.title}}</a>, <a href="/tro/{{ custom }}">{{person.unit}}</a>
+                {% else %}
+                  <a href="{{ person.url }}">{{person.title}}</a>, {{person.unit}}
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        </li>
+      {% endif %}
+      {% endunless %}
+    {% endfor %}
+  </ul>
+</div>

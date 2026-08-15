@@ -1,0 +1,67 @@
+{% include header.html %}
+  <main role="main">
+    <div class="container top bg-light mt-3">
+      <div class="row">
+        <div class="col">
+          <h2>{{ page.title }}</h2>
+          {% if page.type %}
+            {{page.type}}<br>
+          {% endif %}
+          {% if page.location %}
+            <b>Location:</b> {{page.location}}<br>
+          {% endif %}
+          {% if page.employer %}
+            <b>Employer:</b> {{page.employer}}<br>
+          {% endif %}
+          {% if page.start-date %}
+            <b>Start Date:</b> {{page.start-date | date_to_long_string}}<br>
+          {% endif %}
+          {% if page.start-date %}
+            <b>End Date:</b> {{page.end-date | date_to_long_string}}<br>
+          {% endif %}
+          {% if page.status %}
+            <b>Status:</b> {{page.status}}<br>
+          {% endif %}
+          <p></p>
+          {{ content }}
+          {% assign hasFiction = false %}
+          {% for post in site.posts %}
+            {% if post.mission contains page.slug %}
+              {% assign hasFiction = true %}
+            {% endif %}
+          {% endfor %}
+          {% if hasFiction %}
+            <h5>Related Posts</h5>
+            <ul>
+            {% for post in site.posts %}
+              {% if post.mission contains page.slug %}
+                <li> <a href="{{ post.url }}">{{ post.title }}, {{ post.date | date_to_long_string }}</a>
+              {% endif %}
+            {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+      {% assign sortedScenarios = site.scenarios | sort: 'date' %}
+      {% for scenario in sortedScenarios %}
+      {% if scenario.mission-slug == page.slug %}
+      <div class="row">
+        <div class="col">
+          <div class="container scenario border bg-info text-white border-primary rounded my-2">
+            <h3>{{ scenario.title }}</h3>
+            {{ scenario.date | date_to_long_string }}<br>
+            {% if scenario.status %}
+              <b>Status:</b> {{scenario.status}}<br>
+            {% endif %}
+            <p></p>
+            {{ scenario.content | markdownify }}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </main>
+{% include footer.html %}
+</body>
+</html>
