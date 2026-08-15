@@ -51,15 +51,27 @@ collections:
 
 sass:
   sass_dir: css
-  
-# Exclude from processing.
-# The following items will not be processed, by default. Create a custom list
-# to override the default setting.
-# exclude:
-#   - Gemfile
-#   - Gemfile.lock
-#   - node_modules
-#   - vendor/bundle/
-#   - vendor/cache/
-#   - vendor/gems/
-#   - vendor/ruby/
+  # the bundled copy of Bootstrap 4 is written for an older Sass; hide its
+  # deprecation warnings so real build errors are visible
+  quiet_deps: true
+  silence_deprecations:
+    - import
+    - global-builtin
+    - color-functions
+    - slash-div
+    - if-function
+    - function-units
+
+# Exclude from processing. These are part of the toolchain rather than the
+# website, so they should not be copied into the built site.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - process_campaign.py
+  - requirements.txt
+  - bundle
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
