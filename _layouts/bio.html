@@ -1,0 +1,74 @@
+{% include header.html %}
+
+  <main role="main">
+    <div class="container top bg-light mt-3">
+      <div class="row">
+        <div class="col">
+          {% if page.portrait %}
+            <img class="img-fluid img-thumbnail rounded float-left mr-3" src="/assets/images/portraits/{{ page.portrait }}">
+          {% endif %}
+          <div class="col-md-12 pt-1">
+            <h4>{{ page.name }}</h4>
+            {% if page.skill-level %}{{ page.skill-level }} {% endif %}{% if page.phenotype %} {{ page.phenotype }} {% endif%}{{ page.role-name }}{% if page.skill-detail %} ({{ page.skill-detail }}){% endif %}<br>
+            <dl class="row">
+            {% if page.rank-name %}
+              <dt class="col-md-2 mb-0 pl-0">Rank:</dt>
+              <dd class="col-md-10 mb-0 pl-0">{{page.rank-name}}</dd>
+            {% endif %}
+            {% if page.callsign %}
+              <dt class="col-md-2 mb-0 pl-0">Callsign:</dt>
+              <dd class="col-md-10 mb-0 pl-0">{{page.callsign}}</dd>
+            {% endif %}
+            {% if page.unit %}
+              <dt class="col-md-2 mb-0 pl-0">Vehicle:</dt>
+              {% include find-custom.html custom-slug=page.unit-slug %}
+              {% if custom %}
+                <dd class="col-md-10 mb-0 pl-0"><a href="/tro/{{ custom }}">{{page.unit}}</a></dd>
+              {% else %}
+                <dd class="col-md-10 mb-0 pl-0">{{page.unit}}</dd>
+              {% endif %}
+            {% endif %}
+            {% if page.force %}
+              <dt class="col-md-2 mb-0 pl-0">Unit:</dt>
+              <dd class="col-md-10 mb-0 pl-0"><a href="/forces/{{ page.force-slug }}">{{page.force}}</a></dd>
+            {% endif %}
+            {% if page.age %}
+              <dt class="col-md-2 mb-0 pl-0">Age:</dt>
+              <dd class="col-md-10 mb-0 pl-0">{{page.age}}</dd>
+            {% endif %}
+            {% if page.kills %}
+              <dt class="col-sm-2 mb-0 pl-0">Kills: </dt>
+              <dd class="col-sm-10 mb-0 pl-0">{{page.kills}}</dd>
+            {% endif %}
+            </dl>
+        </div>
+        </div>
+      </div>
+      <hr>
+      <div class="row">
+        <div class="col">
+          <div class="container">
+            {{ content }}
+            {% assign hasFiction = false %}
+            {% for post in site.posts %}
+              {% if post.personnel contains page.slug %}
+                {% assign hasFiction = true %}
+              {% endif %}
+            {% endfor %}
+            {% if hasFiction %}
+              <h5>Related Posts</h5>
+              <ul>
+              {% for post in site.posts %}
+                {% if post.personnel contains page.slug %}
+                  <li> <a href="{{ post.url }}">{{ post.title }}, {{ post.date | date_to_long_string }}</a>
+                {% endif %}
+              {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+  </main>
+  {% include footer.html %}
+</body>
+</html>

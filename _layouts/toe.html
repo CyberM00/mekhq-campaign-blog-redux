@@ -1,0 +1,24 @@
+{% include header.html %}
+  <main role="main">
+    <div class="container top bg-light mt-3">
+      {{content}}    
+      <div class="row">
+        <div class="col">
+          <div class="container bg-light my-2">
+            {% for force in site.forces %}
+              {% if force.parent-slug == nil %}
+                {% capture topslug %}{{force.slug}}{% endcapture %}
+                {% capture topcontent %}{{force.content}}{% endcapture %}
+              {% endif %}
+            {% endfor %}
+            {% unless site.toe_front_page %}
+              {{ topcontent }}
+            {% endunless %}
+            {% include toe-element.html parent_slug=topslug %}
+          </div>
+        </div>
+      </div>
+  </main>
+{% include footer.html %}
+</body>
+</html>
