@@ -1,5 +1,28 @@
 _site
 .sass-cache
 .jekyll-metadata
+.jekyll-cache
 .DS_Store
 Gemfile.lock
+
+# pre-baked release build output
+bundle/dist
+__pycache__
+
+# Everything below is written by process_campaign.py from your own campaign
+# save. It is yours, not the template's, so it stays out of the repository.
+# The sample files are kept so a fresh clone still builds and shows what the
+# generated files look like; running the script replaces them.
+campaign/_personnel/*
+!campaign/_personnel/sample-person.md
+campaign/_forces/*
+!campaign/_forces/sample-force.md
+campaign/_missions/*
+!campaign/_missions/sample-mission.md
+campaign/_scenarios/*
+!campaign/_scenarios/sample-scenario.md
+assets/images/portraits/*
+!assets/images/portraits/default.gif
+
+# your own settings for the pre-baked release
+campaign.ini

@@ -1,4 +1,8 @@
-# MekHQ Blog
+# MekHQ Blog — redux
+
+> **This is a modified version of [mekhq-blog](https://github.com/AaronGullickson/mekhq-blog) by Aaron Gullickson**, brought up to date for MekHQ 0.51 and Jekyll 4. The original stopped working as MekHQ's save format and the Ruby ecosystem moved on; everything good about the design is his. See [CHANGELOG.md](CHANGELOG.md) for what was changed and when, and please report problems here rather than to him.
+>
+> Licensed under the GNU General Public License v3.0, the same as the original. See [LICENSE](LICENSE).
 
 This repository contains a [jekyll](https://jekyllrb.com/) template and a [python](https://www.python.org/) script that will turn a [MekHQ](https://megamek.org/) campaign save file into a beautiful looking website. Examples of the website in action can be found here:
 
@@ -11,23 +15,24 @@ The website will produce output for selected personnel, mission and scenario wri
 
 ### Requirements
 
-- **Jekyll**: follow the installation instructions [here](https://jekyllrb.com/docs/installation/) for your operating system.
-- **Python 3**: Python 3 can be downloaded [here](https://www.python.org/downloads/).
+- **Ruby** 3.x with **Jekyll 4**: follow the installation instructions [here](https://jekyllrb.com/docs/installation/) for your operating system. On Windows, install "Ruby+Devkit" from [RubyInstaller](https://rubyinstaller.org/) (`winget install RubyInstallerTeam.RubyWithDevKit.3.3` works too).
+- **Python 3**: Python 3 can be downloaded [here](https://www.python.org/downloads/). The script needs the `python-dateutil` package: `pip install -r requirements.txt`.
+- **MekHQ**: any recent release (tested against 0.51.00, and the older 0.4x save layout is still supported).
 
 ### Instructions
 
 Download a zip version of this repository using the big green button above or download one of the available releases. Alternatively, this entire repository can be used as a template for a new repository on GitHub. 
 
-Once you have downloaded the repository, you first need to update the bundler for jekyll. To do that, run the following command from the command line in the top-level directory:
+Once you have downloaded the repository, install the ruby gems it needs. Run the following command from the command line in the top-level directory:
 
 ```bash
-bundle update
+bundle install
 ```
 
 Once that is complete, you can test that the website is functioning by running the following command from the command line in the top-level directory:
 
 ```bash
-jekyll serve
+bundle exec jekyll serve
 ```
 
 If successful, this will serve up the website locally at [http://localhost:4000/](http://localhost:4000/).
@@ -36,22 +41,50 @@ To add your campaign's information, you should open up the `process_campaign.py`
 
 ```py
 #relative or absolute path to your mekhq directory including trailing /
-mekhq_path = "../Programs/mekhq-0.47.5/"
+mekhq_path = "../mekhq/MekHQ-0.51.00/"
 
 #the name of your campaign file within the campaigns directory of your 
 #mekhq directory
-campaign_file = 'Flaming Devil Monkeys30740904.cpnx'
+campaign_file = 'The Learning Ropes.cpnx.gz'
 ```
 
-The `mekhq_path` entry should provide a relative or absolute path to your MekHQ directory. The `campaign_file` entry should contain the name of the campaign file you wish to load.
+The `mekhq_path` entry should provide a relative or absolute path to your MekHQ directory (relative paths are resolved against the folder holding the script). The `campaign_file` entry should contain the name of the campaign file you wish to load, either a `.cpnx` or a compressed `.cpnx.gz` save. Setting it to `''` loads the most recently saved campaign in that folder.
 
 Once you have made and saved these changes, you can run the python file from the command line:
 
 ```bash
-./process_campaign.py
+python process_campaign.py
 ```
 
-This will create all of the necessary files in your `campaign` directory and add images to your `assets/images` directory. To test whether it worked properly, you can use `jekyll serve` from the command line again to load the website locally, as described above.
+Both settings can also be passed on the command line instead of editing the file, which is handy if you juggle several campaigns:
+
+```bash
+python process_campaign.py "My Campaign.cpnx.gz" ../mekhq/MekHQ-0.51.00/
+```
+
+This will create all of the necessary files in your `campaign` directory and add images to your `assets/images` directory. To test whether it worked properly, you can use `bundle exec jekyll serve` from the command line again to load the website locally, as described above.
+
+### A note on MekHQ versions
+
+MekHQ has renamed a lot of things since this template was written: personnel live under `humanResources`, forces are called `formations`, "Mech" became "Mek" throughout, and rank tables gained medical, admin, and civilian columns. The script handles both the old and new names, so saves from 0.4x through 0.51 should process. If a future release breaks it, the parts that are most likely to need updating are the `roles_dict`, `role_skills`, and `role_professions` tables at the top of `process_campaign.py`.
+
+### Keeping the site up to date
+
+Every time you want the website to reflect your latest save, you re-run the script and rebuild. If typing two commands after each play session gets tedious, there are a couple of directions worth exploring:
+
+- **A one-click refresh script.** Drop a small batch file (or shell script) in this directory that runs both steps, then double-click it after saving your campaign:
+
+  ```bat
+  @echo off
+  python process_campaign.py
+  bundle exec jekyll build
+  ```
+
+  Stop any running `jekyll serve` first — its watch mode holds the generated markdown open, and the script deletes those files before rewriting them.
+
+- **Auto-deploy from git.** Keep this directory in a git repository and let a host like [netlify](https://www.netlify.com/), GitHub Pages, or Cloudflare Pages build and publish on every push. The host cannot run MekHQ, so the workflow is: run `process_campaign.py` locally, commit the regenerated `campaign/` and `assets/images/portraits/` files, and push. The host runs `jekyll build` for you and puts the result online.
+
+- **A release with everything baked in.** Being tried on the `bundled-release` branch: a zip carrying its own Ruby, gems, and Python, so nobody has to install anything — double-click an exe, answer where MekHQ lives, and a browser opens on your campaign. See [`bundle/README.md`](bundle/README.md) on that branch for how it is put together and what it costs.
 
 ## Customization
 
@@ -87,7 +120,7 @@ You can add blot posts in the `campaign/_posts`. Follow the outline given in the
 
 ### Choosing which personnel to load 
 
-By default, the script will load all personnel except astechs and medics. You can change this by customizing the `roles` value at the top of the `process_campaign.py` script.
+By default, the script will load all combat and support personnel, but not astechs, medics, dependents, or the civilian roles MekHQ added in 0.50. You can change this by customizing the `roles` value at the top of the `process_campaign.py` script.
 
 ### Personnel types in menu drop-down
 
@@ -113,12 +146,25 @@ The website is produced as a static website and thus has very simple hosting req
 To create your static website, type the following into your command line:
 
 ```bash
-jekyll build
+bundle exec jekyll build
 ```
 
 This will build your static website in the `_site` directory. You can take everything in that directory and place it wherever you want your static website hosted. Alternatively, if you installed via GitHub, many services like [netlify](https://www.netlify.com/) can deploy directly from your jekyll setup.
 
 ## Disclaimers
 
-- I am providing this because it may be of interest, but it was designed for my own personal campaigns and in this early stage is likely to break for others, given the complexity of options in MekHQ. If your campaign will not process, please post an issue that includes the attached campaign file. 
-- I am open to adding additional features to this website which may be requested through the issues tab. However, the goal here is not reproduce every possible thing that MekHQ reports but rather to produce a nice narratively driven website front for your campaign. I will not bloat this produce or provide endless customization options to satisfy BOCD ("Battletech OCD"). 
+- This was designed for personal campaigns, and MekHQ has enough options that it is likely to trip over something in yours. If your campaign will not process, please open an issue and attach the campaign file.
+- The goal is not to reproduce everything MekHQ reports, but to produce a nice narratively driven website for your campaign. It will not grow endless options to satisfy BOCD ("Battletech OCD").
+- Your campaign's generated pages and portraits are not kept in this repository — they are written from your own save when you run the script, and are ignored by git.
+
+## Credits and licensing
+
+This is a derivative of [mekhq-blog](https://github.com/AaronGullickson/mekhq-blog) by Aaron Gullickson, used and redistributed under the **GNU General Public License v3.0**. The Jekyll template, the layouts, and the original campaign parser are his work. See [CHANGELOG.md](CHANGELOG.md) for the modifications made here.
+
+Bundled third-party components: [Bootstrap 4](https://getbootstrap.com/) (MIT). The pre-baked release additionally redistributes Ruby, Python, Jekyll and its gems, each under its own license, listed in `THIRD-PARTY-NOTICES.txt` inside that download.
+
+### BattleTech
+
+MechWarrior, BattleMech, `Mech and AeroTech are registered trademarks of The Topps Company, Inc. Catalyst Game Labs and the Catalyst Game Labs logo are trademarks of InMediaRes Productions, LLC. MechWarrior Copyright Microsoft Corporation.
+
+This is an unofficial fan project, not endorsed by or affiliated with Microsoft, Topps, or Catalyst Game Labs, and is provided free of charge under Microsoft's [Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules). Portrait images and other data come from [MegaMek](https://megamek.org/), which is licensed CC BY-NC-SA 4.0; they are read from your own MekHQ install rather than distributed here. 

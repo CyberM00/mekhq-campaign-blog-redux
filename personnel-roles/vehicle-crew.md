@@ -2,6 +2,9 @@
 layout: personnel
 title: Vehicle Crew
 roles: 
+  - "VEHICLE_CREW_GROUND"
+  - "VEHICLE_CREW_NAVAL"
+  - "VEHICLE_CREW_VTOL"
   - "GROUND_VEHICLE_DRIVER"
   - "NAVAL_VEHICLE_DRIVER"
   - "VEHICLE_GUNNER"
