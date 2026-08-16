@@ -183,9 +183,10 @@ role_skills = {
 }
 
 # beginning of portait paths, only change if default image changes
-portrait_paths = {
-    "default.gif": "default.gif"
-}
+# filled in as people are written: the name the site will use, pointing at
+# the file it was found at inside MekHQ. The fallback portrait is not in here
+# because it ships with the template and is no longer deleted on each run.
+portrait_paths = {}
 
 # skill type dictionary
 skill_dict = {
@@ -290,6 +291,40 @@ def get_portrait_file(ele):
         return ''
     else:
         return file_name
+
+# MekHQ does not always save a portrait category that is a real folder. A
+# vehicle crewman comes out as 'Female/Vehicle Crew Ground/' while the file
+# actually sits in 'Female/Vehicle Crew/Ground/'. Joining the two blindly
+# fails for a good share of a campaign, so fall back to finding the file by
+# name. The index is built once, on first use.
+portrait_dirs = [mekhq_path + 'data/images/portraits/',
+                 mekhq_path + 'userdata/data/images/portraits/']
+portrait_index = {}
+
+
+def build_portrait_index():
+    for portrait_dir in portrait_dirs:
+        if not os.path.isdir(portrait_dir):
+            continue
+        for root, dirs, files in os.walk(portrait_dir):
+            for file_name in files:
+                # first one wins, so data/ beats userdata/
+                portrait_index.setdefault(file_name.lower(),
+                                          os.path.join(root, file_name))
+
+
+def find_portrait(category, file_name):
+    """Return where a portrait actually is, or None if it is not there."""
+    if file_name == '':
+        return None
+    for portrait_dir in portrait_dirs:
+        direct = os.path.join(portrait_dir, category + file_name)
+        if os.path.isfile(direct):
+            return direct
+    if not portrait_index:
+        build_portrait_index()
+    return portrait_index.get(file_name.lower())
+
 
 def replace_portrait_name(portrait_file, slug):
     suffix = portrait_file.split('.')[-1]
@@ -608,11 +643,20 @@ def get_skill_report(person):
 # Remove old files to start fresh
 # ----------------------------------------------------------------------------
 
+# The template's own sample files and the fallback portrait are part of the
+# project rather than output, so they survive. Without this, every run
+# deleted files the repository tracks, and the site lost its stand-in
+# portrait for anyone MekHQ has no picture of.
+keep = ('default.gif',)
+
 for directory in ['campaign/_forces', 'campaign/_missions',
                   'campaign/_personnel', 'campaign/_scenarios',
                   'assets/images/portraits']:
     os.makedirs(directory, exist_ok=True)
     for f in glob.glob(directory + '/*'):
+        name = os.path.basename(f)
+        if(name in keep or name.startswith('sample-')):
+            continue
         os.remove(f)
 
 # ----------------------------------------------------------------------------
@@ -775,13 +819,12 @@ for person in personnel.findall('person'):
     skill_desc = get_skill_report(person)
     kill_count = count_kills(uuid, kills)
     portrait = person.find('portrait')
-    if(portrait is None):
-        portrait_file = ''
-        portrait_path = ''
-    else:
+    portrait_source = None
+    portrait_file = ''
+    if(portrait is not None):
         portrait_file = get_portrait_file(portrait.find('filename'))
-        portrait_path = get_portrait_path(portrait.find('category')) + \
-            portrait_file
+        portrait_source = find_portrait(
+            get_portrait_path(portrait.find('category')), portrait_file)
     callsign = find_first_text(person, 'callsign')
     f = open('campaign/_personnel/' + urlify(name) + '.md', 'w',
              encoding='utf-8')
@@ -815,9 +858,9 @@ for person in personnel.findall('person'):
     if(force_name):
         f.write('force: ' + yamlify(force_name) + '\n')
         f.write('force-slug: ' + urlify(force_name) + '\n')
-    if(portrait_path != '' and portrait_file != ''):
+    if(portrait_source is not None):
         new_portrait_file = replace_portrait_name(portrait_file, urlify(name))
-        portrait_paths[new_portrait_file] = portrait_path
+        portrait_paths[new_portrait_file] = portrait_source
         f.write('portrait: ' + new_portrait_file + '\n')
     f.write('---\n\n')
     f.write(unescape(bio))
@@ -908,21 +951,21 @@ if(missions is not None):
 # Copy over data from MekHQ
 # ----------------------------------------------------------------------------
 
-# copy over images
+# copy over images. Each was resolved to a file that exists while the person
+# was being written, so a failure here is a real problem rather than simply a
+# portrait MekHQ does not have.
 portraits_copied = 0
-portrait_dirs = [mekhq_path + 'data/images/portraits/',
-                 mekhq_path + 'userdata/data/images/portraits/']
 for portrait_name in portrait_paths:
-    portrait_path = portrait_paths[portrait_name]
-    for portrait_dir in portrait_dirs:
-        source = portrait_dir + portrait_path
-        if(os.path.exists(source)):
-            copyfile(source, 'assets/images/portraits/' + portrait_name)
-            portraits_copied = portraits_copied + 1
-            break
+    try:
+        copyfile(portrait_paths[portrait_name],
+                 'assets/images/portraits/' + portrait_name)
+        portraits_copied = portraits_copied + 1
+    except OSError as problem:
+        print('Could not copy portrait {}: {}'.format(portrait_name, problem))
 
 print('Wrote {} personnel, {} missions, {} scenarios, {} forces, and copied '
       '{} portraits.'.format(people_written, missions_written,
                              scenarios_written,
-                             len(glob.glob('campaign/_forces/*.md')),
+                             len([f for f in glob.glob('campaign/_forces/*.md')
+                                  if 'sample-' not in f]),
                              portraits_copied))

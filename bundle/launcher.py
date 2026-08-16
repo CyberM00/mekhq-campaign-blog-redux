@@ -8,9 +8,17 @@ launcher is what the bundled MekHQ-Website.exe runs:
     1. work out where MekHQ is and which save to read
     2. run process_campaign.py against that save
     3. build the site with the bundled Jekyll
-    4. serve it and open a browser
+    4. rewrite its links so the folder works on its own
+    5. open it in a browser
 
-Run it with --help to see the individual steps as flags.
+There is no web server in that list. Jekyll writes links from the root of a
+site, which only a server can answer; rewriting them to ordinary relative
+paths means the built folder opens by double-clicking index.html, today and
+in five years, with nothing running. --serve is still there for anyone
+editing the site who wants it rebuilt as they go.
+
+--share packs the whole site into one file to send someone, and --publish
+packages it for a web host. Run with --help for the rest.
 """
 
 import argparse
@@ -23,6 +31,7 @@ import sys
 import threading
 import time
 import webbrowser
+import zipfile
 
 # process_campaign.py is read from disk at run time, so the exe builder cannot
 # see what it imports and would leave those modules out. Importing them here
@@ -34,6 +43,8 @@ import re  # noqa: F401
 import shutil  # noqa: F401
 import xml.etree.ElementTree  # noqa: F401
 from dateutil import relativedelta  # noqa: F401
+import share  # noqa: F401
+from PIL import Image  # noqa: F401
 
 CONFIG_NAME = 'campaign.ini'
 
@@ -286,11 +297,151 @@ def check_path_length():
          'again.'.format(BASE, len(BASE)))
 
 
+# ----------------------------------------------------------------------------
+# Making the built site work by double-clicking it
+# ----------------------------------------------------------------------------
+
+# Jekyll writes links from the root of a web server: /css/site.css, and
+# /forces/mek-company with no file extension. Opened from a folder rather than
+# served, every one of those is broken — which is the only reason this program
+# ever needed to run a web server. Rewriting them to ordinary relative paths
+# turns the output into something anyone can open by double-clicking, forever,
+# with no program running.
+LINK_PATTERN = re.compile(r'((?:href|src)=")/([^"]*)"')
+CSS_URL_PATTERN = re.compile(r'url\((["\']?)/([^)"\']*)\1\)')
+
+
+def resolve_target(site, path):
+    """Point a server-style path at a file that exists on disk."""
+    path = path.split('#')[0].split('?')[0]
+    if not path:
+        return 'index.html'
+    full = os.path.join(site, path.replace('/', os.sep))
+    if os.path.isdir(full):
+        return path.rstrip('/') + '/index.html'
+    if not os.path.splitext(path)[1] and os.path.isfile(full + '.html'):
+        return path + '.html'
+    return path
+
+
+def make_portable(site):
+    """Rewrite absolute links so the folder works from the file system."""
+    changed = 0
+    for root, _, files in os.walk(site):
+        for name in files:
+            if not name.endswith(('.html', '.css')):
+                continue
+            full = os.path.join(root, name)
+            depth = os.path.relpath(root, site).replace('\\', '/')
+            up = '' if depth == '.' else '../' * len(depth.split('/'))
+
+            def to_relative(match, up=up):
+                target = resolve_target(site, match.group(2))
+                anchor = match.group(2).partition('#')[2]
+                return '{}{}{}"'.format(match.group(1), up + target,
+                                        '#' + anchor if anchor else '')
+
+            try:
+                with open(full, encoding='utf-8') as handle:
+                    original = handle.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+            text = LINK_PATTERN.sub(to_relative, original)
+            text = CSS_URL_PATTERN.sub(
+                lambda m, up=up: 'url({}{}{})'.format(
+                    m.group(1), up + resolve_target(site, m.group(2)),
+                    m.group(1)), text)
+            # the stylesheet reaches up twice for images that sit one level
+            # up; harmless on a server, which clamps at the root, but it
+            # escapes the folder entirely when opened as a file
+            if name.endswith('.css'):
+                text = text.replace('../../assets/', '../assets/')
+            if text != original:
+                with open(full, 'w', encoding='utf-8') as handle:
+                    handle.write(text)
+                changed += 1
+    return changed
+
+
 def build_site():
     say('\nBuilding the website...')
     if run_jekyll(['build']) != 0:
         fail('The site build failed. The messages above say why.')
-    say('Built: {}'.format(os.path.join(SITE, '_site')))
+    pages = make_portable(os.path.join(SITE, '_site'))
+    say('Built {} pages.'.format(pages))
+    say('  {}'.format(os.path.join(SITE, '_site')))
+
+
+def site_title():
+    """The unit's name, used to name the file people get sent."""
+    try:
+        with open(os.path.join(SITE, '_config.yml'), encoding='utf-8') as f:
+            for line in f:
+                if line.startswith('title:'):
+                    return line.split(':', 1)[1].strip().strip('\'"')
+    except OSError:
+        pass
+    return 'Campaign'
+
+
+def open_locally():
+    page = os.path.join(SITE, '_site', 'index.html')
+    if not os.path.isfile(page):
+        fail('Nothing has been built yet, so there is nothing to open.')
+    say('\nOpening your campaign...')
+    webbrowser.open('file:///' + page.replace('\\', '/'))
+    say('\nThe website is an ordinary folder of files. Open index.html any')
+    say('time you like - this program only needs running again when your')
+    say('campaign has moved on.')
+
+
+def publish_site():
+    """Zip the site for a host, and point at the easiest one.
+
+    Deliberately no accounts, tokens or logins here. Netlify Drop takes a
+    dropped zip and gives back a public address without so much as an email,
+    which is the shortest path from a campaign save to a link you can hand
+    your group.
+    """
+    source = os.path.join(SITE, '_site')
+    if not os.path.isdir(source):
+        fail('Nothing has been built yet, so there is nothing to publish.')
+    name = re.sub(r'[^\w\- ]', '', site_title()).strip() or 'Campaign'
+    archive = os.path.join(BASE, name + ' website.zip')
+    say('\nPackaging the site for a web host...')
+    if os.path.exists(archive):
+        os.remove(archive)
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zipped:
+        for root, _, files in os.walk(source):
+            for filename in files:
+                full = os.path.join(root, filename)
+                zipped.write(full, os.path.relpath(full, source))
+    say('Made {} ({:.1f} MB)'.format(archive, os.path.getsize(archive) / 1e6))
+    say('')
+    say('To put it online, free, with no account:')
+    say('  1. Go to https://app.netlify.com/drop')
+    say('  2. Drag that zip onto the page')
+    say('  3. You get a public address to share')
+    say('')
+    say('GitHub Pages and Cloudflare Pages work the same way if you would')
+    say('rather use those; upload the contents of the zip as the site.')
+    if not os.environ.get('MEKHQ_WEBSITE_NO_BROWSER'):
+        webbrowser.open('https://app.netlify.com/drop')
+    return archive
+
+
+def export_share_file():
+    """Fold the whole site into one file that can be sent to someone."""
+    import share
+    name = re.sub(r'[^\w\- ]', '', site_title()).strip() or 'Campaign'
+    output = os.path.join(BASE, name + '.html')
+    say('\nPacking the whole site into one file...')
+    size = share.build(os.path.join(SITE, '_site'), site_title(), output)
+    say('\nMade {} ({:.1f} MB)'.format(output, size / 1e6))
+    say('\nSend that one file to anyone - email, chat, a USB stick. They')
+    say('double-click it and the whole campaign opens in their browser.')
+    say('Nothing for them to install, and no internet needed.')
+    return output
 
 
 def serve_site(port, open_browser):
@@ -311,13 +462,22 @@ def serve_site(port, open_browser):
 def main():
     parser = argparse.ArgumentParser(
         description='Build and preview a MekHQ campaign website.')
+    parser.add_argument('--share', action='store_true',
+                        help='also pack the site into a single file you can '
+                             'send to someone')
+    parser.add_argument('--publish', action='store_true',
+                        help='package the site for putting online, and show '
+                             'you where to drop it')
     parser.add_argument('--build-only', action='store_true',
-                        help='write the site to site/_site and exit, for '
-                             'uploading to a web host')
-    parser.add_argument('--serve-only', action='store_true',
-                        help='skip reading MekHQ, just serve what was built')
+                        help='build and stop, without opening a browser')
+    parser.add_argument('--serve', action='store_true',
+                        help='also run a local web server, which rebuilds as '
+                             'you edit the site')
+    parser.add_argument('--open-only', action='store_true',
+                        help='open what was built last without reading MekHQ '
+                             'again')
     parser.add_argument('--port', type=int, default=4000,
-                        help='port for the preview server (default 4000)')
+                        help='port for the --serve web server (default 4000)')
     parser.add_argument('--no-browser', action='store_true',
                         help='do not open a browser window')
     args = parser.parse_args()
@@ -326,17 +486,28 @@ def main():
     say('=' * 60)
     check_path_length()
 
-    if not args.serve_only:
+    if not args.open_only:
         mekhq_path, campaign_file = resolve_campaign()
         run_parser(mekhq_path, campaign_file)
         build_site()
 
+    if args.share:
+        export_share_file()
+
+    if args.publish:
+        publish_site()
+
     if args.build_only:
-        say('\nUpload the contents of site/_site to any web host to publish.')
         pause()
         return
 
-    serve_site(args.port, not args.no_browser)
+    if args.serve:
+        serve_site(args.port, not args.no_browser)
+        return
+
+    if not args.no_browser:
+        open_locally()
+    pause()
 
 
 if __name__ == '__main__':

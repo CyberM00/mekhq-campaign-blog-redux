@@ -13,5 +13,9 @@ unit-slug: bandersnatch-ghost-howler
 force: Force Awesome
 force-slug: force-awesome
 dead: False
+# published: false keeps this out of the built site. It is here to
+# show the shape of the files process_campaign.py writes, and so a
+# fresh clone still builds before you have run anything.
+published: false
 ---
 A Commander without an army.

@@ -10,7 +10,42 @@ scaffolding — none of it ends up in the release itself.
 | File | What it is |
 | --- | --- |
 | `launcher.py` | the program the user actually runs, frozen into `MekHQ-Website.exe` |
+| `share.py` | folds a built site into one sendable HTML file |
 | `build_release.py` | assembles the release folder and zips it |
+
+## No web server
+
+The built site used to need one. Jekyll writes links from the root of a site
+— `/css/site.css`, `/forces/mek-company` with no extension — and none of
+those resolve when a folder is opened rather than served, which is the only
+reason the launcher ever started a server at all.
+
+`make_portable()` in `launcher.py` rewrites them: absolute paths become
+relative to each page's depth, extensionless paths gain their `.html`, and
+the stylesheet's `../../assets` (which only worked because servers clamp at
+the root) becomes `../assets`. After that the folder opens by double-clicking
+`index.html`, today and in five years, with nothing running. `--serve` is
+still there for anyone editing the site who wants it rebuilt as they go.
+
+Two things had to be fixed to make offline pages work properly. jQuery,
+Popper and Bootstrap were loading from CDNs, so the Personnel drop-down was
+dead without internet; they are vendored into `assets/js` now. And Font
+Awesome was being fetched on every page load without a single icon using it,
+so it is gone.
+
+## Sending a campaign to someone
+
+`share.py` packs the whole site into one HTML file: every page becomes a
+section, links between them become fragment links, and a small script shows
+one at a time. Images are embedded, and this is where the size goes.
+
+Portraits repeat across the roster, the role pages and their own bios, so
+the first version wrote a 100 MB file by embedding each copy separately.
+Carrying each image once and handing them out by index brought that to
+27 MB. The rest is MekHQ's portraits being 200 KB PNGs for something shown
+at 200 pixels: reduced to a 128-colour palette, which keeps the transparent
+cut-out that matters against the camouflage background, the same campaign
+comes to **6 MB**. That fits in an email.
 
 ## Building it
 

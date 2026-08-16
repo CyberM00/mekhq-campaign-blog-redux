@@ -56,17 +56,41 @@ def run(command, cwd=None, env=None):
         sys.exit('Failed: ' + ' '.join(command))
 
 
+# Written from whoever's campaign was last processed here. The release must
+# ship the template, not the contents of the developer's own unit, so these
+# are filtered out of the copy the same way .gitignore keeps them out of the
+# repository. Only the sample files and the fallback portrait survive.
+GENERATED_DIRS = ('campaign/_forces', 'campaign/_missions',
+                  'campaign/_personnel', 'campaign/_scenarios',
+                  'assets/images/portraits')
+GENERATED_KEEP = ('default.gif',)
+
+
+def is_generated(path):
+    relative = os.path.relpath(path, REPO).replace('\\', '/')
+    folder, _, name = relative.rpartition('/')
+    if folder not in GENERATED_DIRS:
+        return False
+    return not (name.startswith('sample-') or name in GENERATED_KEEP)
+
+
 def copy_site(target):
     print('Copying the site...', flush=True)
     os.makedirs(target, exist_ok=True)
+
+    def ignore(directory, names):
+        skipped = {name for name in names if name in SITE_SKIP}
+        skipped.update(name for name in names
+                       if is_generated(os.path.join(directory, name)))
+        return skipped
+
     for entry in os.listdir(REPO):
         if entry in SITE_SKIP:
             continue
         source = os.path.join(REPO, entry)
         destination = os.path.join(target, entry)
         if os.path.isdir(source):
-            shutil.copytree(source, destination,
-                            ignore=shutil.ignore_patterns(*SITE_SKIP))
+            shutil.copytree(source, destination, ignore=ignore)
         else:
             shutil.copy2(source, destination)
 
@@ -93,6 +117,43 @@ def install_gems(site, gems, ruby_bin):
     env['BUNDLE_PATH'] = gems
     ruby = os.path.join(ruby_bin, 'ruby.exe')
     run([ruby, '-S', 'bundle', 'install'], cwd=site, env=env)
+
+
+def slim_runtime_gems(ruby):
+    """Drop the development machine's own gems from the copied Ruby.
+
+    Everything Jekyll needs is installed into the release's own gems folder,
+    so whatever happens to be installed globally here is dead weight. It is
+    not a small amount: the whole Jekyll stack was shipping twice, about
+    40 MB of it, because an early build installed the gems globally before
+    the release had a gems folder of its own.
+
+    Bundler stays, since the launcher runs Jekyll through it. Ruby's default
+    gems are not touched — they live in lib/ruby/3.3.0 and in
+    specifications/default, and Ruby will not boot without them.
+    """
+    print('Removing gems the release does not use...', flush=True)
+    gem_root = os.path.join(ruby, 'lib', 'ruby', 'gems', '3.3.0')
+    freed = 0
+    for folder in ('gems', 'extensions'):
+        path = os.path.join(gem_root, folder)
+        if not os.path.isdir(path):
+            continue
+        for name in os.listdir(path):
+            if name.startswith('bundler-'):
+                continue
+            full = os.path.join(path, name)
+            freed += folder_size(full) if os.path.isdir(full) else 0
+            shutil.rmtree(full, ignore_errors=True)
+    specs = os.path.join(gem_root, 'specifications')
+    if os.path.isdir(specs):
+        for name in os.listdir(specs):
+            if name.startswith('bundler-') or name == 'default':
+                continue
+            full = os.path.join(specs, name)
+            if os.path.isfile(full):
+                os.remove(full)
+    print('  freed {:.0f} MB'.format(freed / 1e6), flush=True)
 
 
 def prune(*roots):
@@ -237,6 +298,18 @@ def verify(target):
     gem_dirs = os.path.join(target, 'gems', 'ruby')
     if not os.path.isdir(gem_dirs):
         missing.append('gems/ruby')
+    # the Jekyll stack once shipped twice over, so check it does not again
+    shipped = set()
+    for root, dirs, _ in os.walk(gem_dirs):
+        if os.path.basename(root) == 'gems':
+            shipped.update(dirs)
+    runtime_gems = os.path.join(target, 'runtime', 'ruby', 'lib', 'ruby',
+                                'gems', '3.3.0', 'gems')
+    if os.path.isdir(runtime_gems):
+        duplicated = shipped.intersection(os.listdir(runtime_gems))
+        if duplicated:
+            sys.exit('These gems ship twice, once in gems/ and again in the '
+                     'copied Ruby:\n  ' + '\n  '.join(sorted(duplicated)))
     if missing:
         sys.exit('The release is missing:\n  ' + '\n  '.join(missing))
     print('  all present', flush=True)
@@ -281,14 +354,23 @@ def build_exe(target):
          '--workpath', work,
          '--specpath', work,
          '--console',
+         # Pillow is in here only to shrink portraits for the shareable
+         # file. Its optional extras are not wanted and cost megabytes.
+         '--exclude-module', 'tkinter',
+         '--exclude-module', 'PIL.ImageQt',
+         '--exclude-module', 'PIL.ImageTk',
+         '--exclude-module', 'PIL.ImageShow',
+         '--exclude-module', 'numpy',
+         '--exclude-module', 'unittest',
+         '--exclude-module', 'pydoc',
          os.path.join(HERE, 'launcher.py')])
 
 
 def write_readme(target, version):
-    text = """MekHQ Campaign Website {version}
+    text = r"""MekHQ Campaign Website {version}
 ===========================================================
 
-Turns a MekHQ campaign save into a website you can browse and publish.
+Turns a MekHQ campaign save into a website you can browse, keep, and share.
 Nothing to install: Ruby, Jekyll and Python are already inside this folder.
 
 HOW TO USE IT
@@ -297,41 +379,51 @@ HOW TO USE IT
   2. Double-click MekHQ-Website.exe.
   3. The first run asks where MekHQ is, and which campaign to read. It
      remembers your answers in campaign.ini.
-  4. A browser opens at http://127.0.0.1:4000/ with your campaign in it.
+  4. Your campaign opens in your browser.
 
-Leave the black window open while you browse. Closing it stops the site.
-After playing more, run it again to refresh.
+That is the whole thing. The website is left behind as ordinary files in
+site\_site, so you can open index.html whenever you like without running
+this program again. Run it again after playing to bring the site up to date.
+
+SENDING IT TO SOMEONE
+
+    MekHQ-Website.exe --share
+
+Packs the entire site - every page, every portrait - into a single HTML file
+named after your unit. Email it, drop it in a chat, put it on a stick.
+Whoever gets it double-clicks the file and the whole campaign opens in their
+browser. Nothing for them to install, and no internet needed.
 
 PUTTING IT ON THE INTERNET
 
-The site is plain files, so any web host will serve it. Run:
+    MekHQ-Website.exe --publish
 
-    MekHQ-Website.exe --build-only
-
-then upload everything inside site\\_site to your host. Free options that
-work well are Netlify, GitHub Pages and Cloudflare Pages.
+Packages the site as a zip and opens Netlify Drop, where dragging the zip
+onto the page gives you a public address to share, with no account needed.
+GitHub Pages and Cloudflare Pages work just as well if you prefer them.
 
 MAKING IT YOURS
 
-  site\\_config.yml            unit name, description, banner on or off
-  site\\css\\site.scss          colours and fonts, at the bottom of the file
-  site\\assets\\images          banner_image.png and unit_logo.png
-  site\\campaign\\_posts        fiction, as markdown files
+  site\_config.yml            unit name, description, banner on or off
+  site\css\site.scss          colours and fonts, at the bottom of the file
+  site\assets\images          banner_image.png and unit_logo.png
+  site\campaign\_posts        fiction, as markdown files
 
-Everything under site\\campaign is rewritten every run, apart from _posts,
-so put your own writing there and leave the rest to the program.
+Everything under site\campaign is rewritten from your save on every run,
+apart from _posts, so put your own writing there and leave the rest alone.
 
 OTHER OPTIONS
 
     MekHQ-Website.exe --help          list every option
-    MekHQ-Website.exe --serve-only    browse without re-reading MekHQ
-    MekHQ-Website.exe --port 4001     use a different port
+    MekHQ-Website.exe --open-only     open the site without re-reading MekHQ
+    MekHQ-Website.exe --serve         run a local server that rebuilds as you
+                                      edit, for tweaking colours and layout
 
 Delete campaign.ini to be asked about the MekHQ folder and save again.
 
 ONE THING TO WATCH
 
-Keep this folder somewhere with a short path, like C:\\MekHQ-Website or your
+Keep this folder somewhere with a short path, like C:\MekHQ-Website or your
 Desktop. Windows cannot start programs whose path runs past 260 characters,
 and the site builder sits deep inside this folder. It will tell you plainly
 if the folder is too deep, rather than failing in a confusing way.
@@ -339,6 +431,7 @@ if the folder is too deep, rather than failing in a confusing way.
     with open(os.path.join(target, 'README-FIRST.txt'), 'w',
               encoding='utf-8') as handle:
         handle.write(text)
+
 
 
 def make_zip(folder, inside_name, name):
@@ -398,6 +491,7 @@ def main():
     copy_site(site)
     copy_ruby(args.ruby, ruby)
     install_gems(site, gems, os.path.join(args.ruby, 'bin'))
+    slim_runtime_gems(ruby)
     prune(gems, ruby)
     build_exe(target)
     write_readme(target, args.version)
