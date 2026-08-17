@@ -3,7 +3,7 @@
 
 A folder of pages is awkward to hand to someone: they have to unzip it, find
 index.html, and keep the rest of the files next to it. This packs the whole
-site — every page, the stylesheet, every portrait — into a single file that
+site -- every page, the stylesheet, every portrait -- into a single file that
 works offline, over email, or from a chat message, with no server and nothing
 to install on their end.
 

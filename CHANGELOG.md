@@ -5,7 +5,7 @@ by Aaron Gullickson, licensed under the GNU General Public License v3.0. The
 GPL asks that modifications be stated plainly, so this file records what was
 changed here and when. Everything before v0.3 is the original project.
 
-## v0.4.0-beta — 2026-08-13 (`bundled-release` branch)
+## v0.4.0-beta -- 2026-08-13 (`bundled-release` branch)
 
 A pre-baked Windows release that needs nothing installed.
 
@@ -21,7 +21,7 @@ A pre-baked Windows release that needs nothing installed.
   repository, and the release ships the template's sample content instead of
   a real campaign.
 
-## v0.3 — 2026-08-12
+## v0.3 -- 2026-08-12
 
 Brought back to life on current tooling. The project dated from 2021 and
 neither half still ran.

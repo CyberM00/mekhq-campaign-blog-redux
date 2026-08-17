@@ -129,7 +129,7 @@ def slim_runtime_gems(ruby):
     the release had a gems folder of its own.
 
     Bundler stays, since the launcher runs Jekyll through it. Ruby's default
-    gems are not touched — they live in lib/ruby/3.3.0 and in
+    gems are not touched -- they live in lib/ruby/3.3.0 and in
     specifications/default, and Ruby will not boot without them.
     """
     print('Removing gems the release does not use...', flush=True)
@@ -160,8 +160,8 @@ def prune(*roots):
     """Delete what no run time loads, to keep paths short.
 
     Only ever point this at the gem trees. The site is made of exactly the
-    kinds of files this deletes — the pages are markdown, and _posts is
-    someone's fiction — so pruning it removes the website.
+    kinds of files this deletes -- the pages are markdown, and _posts is
+    someone's fiction -- so pruning it removes the website.
     """
     print('Pruning paths...', flush=True)
     removed = 0
@@ -213,7 +213,7 @@ def write_notices(target, ruby_bin, gems):
     rows = [line.split('\t') for line in result.stdout.splitlines()
             if line.count('\t') == 3]
     if not rows:
-        sys.exit('No gems found under {} — the notices file would ship '
+        sys.exit('No gems found under {} -- the notices file would ship '
                  'empty.'.format(gems))
 
     lines = [

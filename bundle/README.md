@@ -5,7 +5,7 @@ downloads it double-clicks an exe and ends up looking at their campaign in a
 browser, with no Ruby, no Jekyll, no Python, and no command line.
 
 This directory holds the two pieces that make that zip. It is build
-scaffolding — none of it ends up in the release itself.
+scaffolding -- none of it ends up in the release itself.
 
 | File | What it is |
 | --- | --- |
@@ -16,7 +16,7 @@ scaffolding — none of it ends up in the release itself.
 ## No web server
 
 The built site used to need one. Jekyll writes links from the root of a site
-— `/css/site.css`, `/forces/mek-company` with no extension — and none of
+-- `/css/site.css`, `/forces/mek-company` with no extension -- and none of
 those resolve when a folder is opened rather than served, which is the only
 reason the launcher ever started a server at all.
 
@@ -112,11 +112,11 @@ PyInstaller and does four things: work out where MekHQ is, run
 `process_campaign.py`, run `jekyll build`, then `jekyll serve` and open a
 browser. It runs the campaign script with `runpy` from disk rather than
 importing a copy baked into the exe, so `site/process_campaign.py` stays
-readable and editable in the release — someone can still change which
+readable and editable in the release -- someone can still change which
 personnel get loaded, exactly as the README describes.
 
 Because that script is read at run time, PyInstaller cannot see what it
-imports, so `launcher.py` imports the same modules itself — that block near
+imports, so `launcher.py` imports the same modules itself -- that block near
 the top is what puts `html` and `dateutil` in the exe. Anything else the
 campaign script starts importing has to be added there too, or the release
 breaks while the development setup carries on working. This is the sharpest
@@ -146,14 +146,14 @@ thing that makes this size plausible at all.
 
 The published zip is extracted somewhere unrelated and run with `PATH` cut
 down to `C:\Windows\system32;C:\Windows`, and `GEM_HOME`, `GEM_PATH`,
-`RUBYOPT`, `RUBYLIB`, `BUNDLE_PATH` and `BUNDLE_GEMFILE` cleared — as close
+`RUBYOPT`, `RUBYLIB`, `BUNDLE_PATH` and `BUNDLE_GEMFILE` cleared -- as close
 to a machine with no Ruby and no Python as can be arranged without a second
 machine. From a cold start, with no `campaign.ini`, it finds MekHQ by itself
 in 0.3 seconds, reads the save, writes 94 personnel and 15 forces, compiles
 the stylesheet and builds 94 pages.
 
 Test the zip, not the folder it was built from. Both bugs worth having found
-here — the path limit and the over-eager prune — were invisible in the build
+here -- the path limit and the over-eager prune -- were invisible in the build
 folder and obvious the moment the artifact was unpacked and used. Check that
 pages have content in them too, not just that they return 200: a site with
 every page empty answers just as cheerfully as a working one.
@@ -165,7 +165,7 @@ odds and ends that a fresh one might not.
 ## Still open
 
 - **Only tested on Windows.** The same approach would work for macOS and
-  Linux, but each needs its own Ruby copy and its own build run — there is no
+  Linux, but each needs its own Ruby copy and its own build run -- there is no
   cross-building here.
 - **Unsigned.** Windows SmartScreen warns about an unrecognised publisher,
   and some antivirus products treat PyInstaller output as suspicious on
@@ -173,7 +173,7 @@ odds and ends that a fresh one might not.
   hardware, which puts a certificate somewhere around 120 US dollars a year
   at the cheapest (Azure Trusted Signing) and several hundred for the
   ordinary kind. Worse, only the expensive tier clears SmartScreen straight
-  away — the cheaper certificates build reputation over time, so a small
+  away -- the cheaper certificates build reputation over time, so a small
   project sits behind the warning regardless. MekHQ itself ships unsigned, so
   the audience already knows the dance. Publishing the zip's SHA-256 with
   each release costs nothing and is the honest version of the same promise.

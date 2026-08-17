@@ -1,4 +1,4 @@
-# MekHQ Blog — redux
+# MekHQ Blog -- redux
 
 > **This is a modified version of [mekhq-blog](https://github.com/AaronGullickson/mekhq-blog) by Aaron Gullickson**, brought up to date for MekHQ 0.51 and Jekyll 4. The original stopped working as MekHQ's save format and the Ruby ecosystem moved on; everything good about the design is his. See [CHANGELOG.md](CHANGELOG.md) for what was changed and when, and please report problems here rather than to him.
 >
@@ -80,11 +80,11 @@ Every time you want the website to reflect your latest save, you re-run the scri
   bundle exec jekyll build
   ```
 
-  Stop any running `jekyll serve` first — its watch mode holds the generated markdown open, and the script deletes those files before rewriting them.
+  Stop any running `jekyll serve` first -- its watch mode holds the generated markdown open, and the script deletes those files before rewriting them.
 
 - **Auto-deploy from git.** Keep this directory in a git repository and let a host like [netlify](https://www.netlify.com/), GitHub Pages, or Cloudflare Pages build and publish on every push. The host cannot run MekHQ, so the workflow is: run `process_campaign.py` locally, commit the regenerated `campaign/` and `assets/images/portraits/` files, and push. The host runs `jekyll build` for you and puts the result online.
 
-- **A release with everything baked in.** Being tried on the `bundled-release` branch: a zip carrying its own Ruby, gems, and Python, so nobody has to install anything — double-click an exe, answer where MekHQ lives, and a browser opens on your campaign. See [`bundle/README.md`](bundle/README.md) on that branch for how it is put together and what it costs.
+- **A release with everything baked in.** Being tried on the `bundled-release` branch: a zip carrying its own Ruby, gems, and Python, so nobody has to install anything -- double-click an exe, answer where MekHQ lives, and a browser opens on your campaign. See [`bundle/README.md`](bundle/README.md) on that branch for how it is put together and what it costs.
 
 ## Customization
 
@@ -155,7 +155,7 @@ This will build your static website in the `_site` directory. You can take every
 
 - This was designed for personal campaigns, and MekHQ has enough options that it is likely to trip over something in yours. If your campaign will not process, please open an issue and attach the campaign file.
 - The goal is not to reproduce everything MekHQ reports, but to produce a nice narratively driven website for your campaign. It will not grow endless options to satisfy BOCD ("Battletech OCD").
-- Your campaign's generated pages and portraits are not kept in this repository — they are written from your own save when you run the script, and are ignored by git.
+- Your campaign's generated pages and portraits are not kept in this repository -- they are written from your own save when you run the script, and are ignored by git.
 
 ## Credits and licensing
 

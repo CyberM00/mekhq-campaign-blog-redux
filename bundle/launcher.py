@@ -303,7 +303,7 @@ def check_path_length():
 
 # Jekyll writes links from the root of a web server: /css/site.css, and
 # /forces/mek-company with no file extension. Opened from a folder rather than
-# served, every one of those is broken — which is the only reason this program
+# served, every one of those is broken -- which is the only reason this program
 # ever needed to run a web server. Rewriting them to ordinary relative paths
 # turns the output into something anyone can open by double-clicking, forever,
 # with no program running.
